@@ -1,0 +1,3 @@
+[submodule "scripthookvdotnet-doc"]
+	path = scripthookvdotnet-doc
+	url = https://github.com/nitanmarcel/scripthookvdotnet-doc
