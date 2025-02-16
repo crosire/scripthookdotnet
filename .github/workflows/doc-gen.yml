@@ -1,0 +1,85 @@
+name: Docfx Documentation Generator
+
+on:
+  push:
+    tags:
+    - 'v3*'
+
+jobs:
+  preparation:
+    name: Pre Documentation Generation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: main
+          submodules: true
+      - name: Fetch Changelog For V2
+        id: changelog_two
+        uses: heinrichreimer/action-github-changelog-generator@v2.2
+        with:
+          token: ${{ github.token }}
+          sinceTag: v0.1
+          dueTag: v2.10.10
+          issues: true
+          issuesWoLabels: true
+          prWoLabels: true
+          author: true
+          verbose: true
+          compareLink: true
+          httpCache: true
+      - name: Fetch Changelog For V3
+        id: changelog_three
+        uses: heinrichreimer/action-github-changelog-generator@v2.2
+        with:
+          token: ${{ github.token }}
+          sinceTag: v2.10.10
+          issues: true
+          issuesWoLabels: true
+          prWoLabels: true
+          author: true
+          verbose: true
+          compareLink: true
+          httpCache: true
+      - name: Generate Changelog
+        uses: cschleiden/replace-tokens@v1.0
+        with:
+          files: '["scripthookvdotnet-doc/scripting_v2/index.md", "scripthookvdotnet-doc/scripting_v3/index.md"]'
+        env:
+          CHANGELOGV2: ${{ steps.changelog_two.outputs.changelog }}
+          CHANGELOGV3: ${{ steps.changelog_three.outputs.changelog }}
+      - name: Upload Artefacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: gen-doc
+          path: .
+  pages:
+    strategy:
+      matrix:
+        os: [windows-2019]
+        include:
+          - os: windows-2019
+            vs: [2019]
+    name: Documentation Generation
+    needs: preparation
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install Depedencies
+        run: choco install docfx
+      - name: Clear Working Directory
+        run: rm -r *
+      - name: Download Artefacts
+        uses: actions/download-artifact@v2
+        with: 
+          name: gen-doc
+          path: .
+      - name: Documentation Generation
+        run: docfx scripthookvdotnet-doc/docfx.json
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          publish_dir: scripthookvdotnet-doc/_site
+          github_token: ${{ github.token }}
+
+  
